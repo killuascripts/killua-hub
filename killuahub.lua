@@ -1,7 +1,9 @@
 --=====================================================
---  KILLUA HUB v2.1  |  mobile + PC
+--  KILLUA HUB v3.0  |  mobile + PC  |  sea 1 / 2 / 3
 --=====================================================
 if _G.KilluaHub then pcall(function() _G.KilluaHub:Destroy() end) end
+if _G.KilluaLoops then for _, c in pairs(_G.KilluaLoops) do pcall(function() c() end) end end
+_G.KilluaLoops = {}
 
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
@@ -9,15 +11,21 @@ local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local TPS = game:GetService("TeleportService")
 local Http = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local VU = game:GetService("VirtualUser")
 local plr = Players.LocalPlayer
 local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
---==== config (seguro) ====
+local function addLoop(fn) table.insert(_G.KilluaLoops, fn) end
+
+--==== config ====
 local CFG = "killuahub_config.json"
 local hasFS = pcall(function() return readfile and writefile and isfile end)
 local C = {
-  speed = 16, jump = 50, farm = false, aura = false, bring = false, autoquest = false,
-  espPlayers = false, espChests = false, espFruits = false, npcFilter = "",
+  speed = 16, jump = 50, farm = false, aura = false, bring = false, autoquest = false, autorad = false,
+  espPlayers = false, espChests = false, espFruits = false, espBosses = false,
+  buso = false, ken = false, autostats = false, statName = "Melee", antiAfk = false, fullbright = false,
+  npcFilter = "", bossFilter = "", sniper = false, sniperName = "",
 }
 if hasFS then pcall(function()
   if isfile(CFG) then local d = Http:JSONDecode(readfile(CFG)); for k, v in pairs(d) do C[k] = v end end
@@ -31,6 +39,7 @@ local function alive()
 end
 local function tp(p) if alive() then plr.Character.HumanoidRootPart.CFrame = CFrame.new(p) end end
 local function notify(t) pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", {Title="Killua Hub", Text=t, Duration=2}) end) end
+local function invoke(a, b, c2) pcall(function() RS.Remotes.CommF_:InvokeServer(a, b, c2) end) end
 
 --==== GUI ====
 local gui = Instance.new("ScreenGui")
@@ -44,21 +53,15 @@ open.TextColor3 = Color3.fromRGB(8, 12, 16); open.Font = Enum.Font.GothamBlack; 
 open.Parent = gui; Instance.new("UICorner", open).CornerRadius = UDim.new(0, 14)
 
 local win = Instance.new("Frame")
-win.Size = UDim2.new(0, 440, 0, 300); win.Position = UDim2.new(0.5, -220, 0.5, -150)
+win.Size = UDim2.new(0, 480, 0, 360); win.Position = UDim2.new(0.5, -240, 0.5, -180)
 win.BackgroundColor3 = Color3.fromRGB(10, 14, 20); win.BorderSizePixel = 0
 win.Active = true; win.Visible = false; win.Parent = gui
 Instance.new("UICorner", win).CornerRadius = UDim.new(0, 14)
 local stroke = Instance.new("UIStroke", win); stroke.Color = Color3.fromRGB(24, 40, 52)
 
--- arrastar (mouse + toque)
 do
   local drag, start, init = false, nil, nil
-  local function begin(i)
-    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-      drag = true; start = i.Position; init = win.Position
-    end
-  end
-  win.InputBegan:Connect(begin)
+  win.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = true; start = i.Position; init = win.Position end end)
   win.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end)
   UIS.InputChanged:Connect(function(i)
     if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
@@ -72,13 +75,11 @@ local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 44); header.BackgroundColor3 = Color3.fromRGB(12, 18, 26)
 header.BorderSizePixel = 0; header.Parent = win
 Instance.new("UICorner", header).CornerRadius = UDim.new(0, 14)
-
 local logo = Instance.new("TextLabel")
-logo.Size = UDim2.new(0, 130, 1, 0); logo.Position = UDim2.new(0, 14, 0, 0)
-logo.BackgroundTransparency = 1; logo.Text = "KILLUA HUB"
+logo.Size = UDim2.new(0, 200, 1, 0); logo.Position = UDim2.new(0, 14, 0, 0)
+logo.BackgroundTransparency = 1; logo.Text = "KILLUA HUB  v3.0"
 logo.TextColor3 = Color3.fromRGB(34, 211, 238); logo.Font = Enum.Font.GothamBlack
 logo.TextSize = 15; logo.TextXAlignment = Enum.TextXAlignment.Left; logo.Parent = header
-
 local function hdrBtn(txt, x, cb)
   local b = Instance.new("TextButton")
   b.Size = UDim2.new(0, 30, 0, 30); b.Position = UDim2.new(1, x, 0, 7)
@@ -103,7 +104,6 @@ Instance.new("UICorner", search).CornerRadius = UDim.new(0, 8)
 local side = Instance.new("Frame")
 side.Size = UDim2.new(0, 108, 1, -132); side.Position = UDim2.new(0, 14, 0, 90)
 side.BackgroundTransparency = 1; side.Parent = win
-
 local pagesWrap = Instance.new("Frame")
 pagesWrap.Size = UDim2.new(1, -140, 1, -132); pagesWrap.Position = UDim2.new(0, 126, 0, 90)
 pagesWrap.BackgroundTransparency = 1; pagesWrap.Parent = win
@@ -117,7 +117,7 @@ stxt.BackgroundTransparency = 1; stxt.TextColor3 = Color3.fromRGB(90, 108, 124)
 stxt.Font = Enum.Font.Gotham; stxt.TextSize = 10; stxt.TextXAlignment = Enum.TextXAlignment.Left
 stxt.Text = "pronto"; stxt.Parent = status
 
-local pages, buttons = {}, {}
+local pages, buttons, Y = {}, {}, {}
 local function page(name)
   local f = Instance.new("ScrollingFrame")
   f.Size = UDim2.new(1, 0, 1, 0); f.BackgroundTransparency = 1; f.BorderSizePixel = 0
@@ -134,18 +134,17 @@ local function showTab(n)
 end
 local function tab(name, y)
   local b = Instance.new("TextButton")
-  b.Size = UDim2.new(1, 0, 0, 30); b.Position = UDim2.new(0, 0, 0, y)
+  b.Size = UDim2.new(1, 0, 0, 28); b.Position = UDim2.new(0, 0, 0, y)
   b.BackgroundColor3 = Color3.fromRGB(16, 24, 32); b.Text = name
   b.TextColor3 = Color3.fromRGB(190, 210, 225); b.Font = Enum.Font.Gotham; b.TextSize = 12
   b.Parent = side; Instance.new("UICorner", b).CornerRadius = UDim.new(0, 7)
   b.MouseButton1Click:Connect(function() showTab(name) end)
   buttons[name] = b
 end
-tab("Farm", 0); tab("Quest", 36); tab("Teleport", 72); tab("Player", 108)
-tab("Visual", 144); tab("Misc", 180)
+tab("Farm", 0); tab("Quest", 34); tab("Teleport", 68); tab("Player", 102)
+tab("Visual", 136); tab("Stats", 170); tab("Misc", 204)
 
-local Y = {}
-local function nextY(p) Y[p] = (Y[p] or 4); local v = Y[p]; Y[p] = v + 34; return v end
+local function nextY(p) Y[p] = (Y[p] or 4); local v = Y[p]; Y[p] = v + 34; p.CanvasSize = UDim2.new(0, 0, 0, Y[p] + 10); return v end
 local function section(p, txt)
   local l = Instance.new("TextLabel")
   l.Size = UDim2.new(1, 0, 0, 18); l.Position = UDim2.new(0, 2, 0, nextY(p))
@@ -189,22 +188,19 @@ local function slider(p, txt, min, max, get, set)
   fill.Size = UDim2.new((get() - min) / (max - min), 0, 1, 0); fill.BackgroundColor3 = Color3.fromRGB(34, 211, 238)
   fill.BorderSizePixel = 0; fill.Parent = bar; Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 4)
   local dragging = false
-  local function update(x)
+  local function upd(x)
     local rel = math.clamp((x - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
     local val = math.floor(min + (max - min) * rel)
     fill.Size = UDim2.new(rel, 0, 1, 0); lbl.Text = txt .. ": " .. val; set(val)
   end
-  bar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = true; update(i.Position.X) end end)
+  bar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = true; upd(i.Position.X) end end)
   UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
-  UIS.InputChanged:Connect(function(i)
-    if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then update(i.Position.X) end
-  end)
+  UIS.InputChanged:Connect(function(i) if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then upd(i.Position.X) end end)
 end
 local function dropdown(p, txt, list, cb)
-  local b = baseBtn(p, txt .. " ▾", function(self)
+  baseBtn(p, txt .. " ▾", function(self)
     if self.Expanded then for _, c in pairs(p:GetChildren()) do if c:GetAttribute("dd") then c:Destroy() end end; self.Expanded = false; return end
-    self.Expanded = true
-    local y = 0
+    self.Expanded = true; local y = 0
     for _, item in ipairs(list) do
       local o = Instance.new("TextButton")
       o.Size = UDim2.new(1, -8, 0, 26); o.Position = UDim2.new(0, 4, 0, self.AbsolutePosition.Y - p.AbsolutePosition.Y + self.AbsoluteSize.Y + y)
@@ -223,12 +219,15 @@ end
 
 --==== FARM ====
 local fp = page("Farm")
-local enemyList = {}
+local enemyList, bossList = {}, {}
 task.spawn(function()
   local e = workspace:FindFirstChild("Enemies")
-  if e then for _, m in pairs(e:GetChildren()) do if m:FindFirstChild("Humanoid") then table.insert(enemyList, m.Name) end end end
+  if e then for _, m in pairs(e:GetChildren()) do
+    local h = m:FindFirstChild("Humanoid")
+    if h then table.insert(enemyList, m.Name); if h.MaxHealth >= 1000 then table.insert(bossList, m.Name) end end
+  end end
 end)
-local function doAttack(one)
+local function doAttack(filter, one)
   if not alive() then return end
   local c = plr.Character
   local tool = c:FindFirstChildOfClass("Tool")
@@ -236,7 +235,7 @@ local function doAttack(one)
   local e = workspace:FindFirstChild("Enemies"); if not e then return end
   for _, m in pairs(e:GetChildren()) do
     local hrp, hum = m:FindFirstChild("HumanoidRootPart"), m:FindFirstChild("Humanoid")
-    if hrp and hum and hum.Health > 0 and (C.npcFilter == "" or m.Name == C.npcFilter) then
+    if hrp and hum and hum.Health > 0 and (filter == "" or m.Name == filter) then
       tp(hrp.Position)
       if tool and tool:FindFirstChild("Handle") then pcall(function() firetouchinterest(tool.Handle, hrp, 0); task.wait(); firetouchinterest(tool.Handle, hrp, 1) end) end
       task.wait(0.1)
@@ -246,16 +245,18 @@ local function doAttack(one)
 end
 section(fp, "combate")
 toggle(fp, "Auto Farm", function() return C.farm end, function(v)
-  C.farm = v; if v then task.spawn(function() while C.farm do doAttack(false); task.wait(0.25) end end) end
+  C.farm = v
+  if v then task.spawn(function() while C.farm do doAttack(C.npcFilter, false); task.wait(0.25) end end) end
 end)
 toggle(fp, "Kill Aura", function() return C.aura end, function(v)
-  C.aura = v; if v then task.spawn(function() while C.aura do
+  C.aura = v
+  if v then task.spawn(function() while C.aura do
     if alive() then
       local tool = plr.Character:FindFirstChildOfClass("Tool"); local e = workspace:FindFirstChild("Enemies")
       if tool and tool:FindFirstChild("Handle") and e then
         for _, m in pairs(e:GetChildren()) do
           local h = m:FindFirstChild("HumanoidRootPart")
-          if h and m:FindFirstChild("Humanoid").Health > 0 and (h.Position - plr.Character.HumanoidRootPart.Position).Magnitude < 40 then
+          if h and m:FindFirstChild("Humanoid").Health > 0 and (h.Position - plr.Character.HumanoidRootPart.Position).Magnitude < 45 then
             pcall(function() firetouchinterest(tool.Handle, h, 0); task.wait(); firetouchinterest(tool.Handle, h, 1) end)
           end
         end
@@ -265,7 +266,8 @@ toggle(fp, "Kill Aura", function() return C.aura end, function(v)
   end end) end
 end)
 toggle(fp, "Bring Mobs", function() return C.bring end, function(v)
-  C.bring = v; if v then task.spawn(function() while C.bring do
+  C.bring = v
+  if v then task.spawn(function() while C.bring do
     if alive() then local e = workspace:FindFirstChild("Enemies")
       if e then for _, m in pairs(e:GetChildren()) do local h = m:FindFirstChild("HumanoidRootPart")
         if h then h.CFrame = plr.Character.HumanoidRootPart.CFrame * CFrame.new(math.random(-8,8),0,math.random(-8,8)) end
@@ -277,29 +279,101 @@ end)
 section(fp, "alvo")
 dropdown(fp, "NPC", enemyList, function(v) C.npcFilter = v end)
 baseBtn(fp, "Limpar filtro", function() C.npcFilter = "" end)
+section(fp, "boss")
+dropdown(fp, "Boss", bossList, function(v) C.bossFilter = v end)
+baseBtn(fp, "Farmar boss selecionado", function()
+  if C.bossFilter == "" then notify("Escolha um boss"); return end
+  task.spawn(function() for _ = 1, 40 do if not alive() then break end; doAttack(C.bossFilter, true); task.wait(0.3) end end)
+end)
 
 --==== QUEST ====
 local qp = page("Quest")
 section(qp, "missao")
 toggle(qp, "Auto Quest", function() return C.autoquest end, function(v)
-  C.autoquest = v; if v then task.spawn(function() while C.autoquest do
-    pcall(function() RS.Remotes.CommF_:InvokeServer("StartQuest", "Bandit", 1) end); task.wait(2)
-  end end) end
+  C.autoquest = v
+  if v then task.spawn(function() while C.autoquest do invoke("StartQuest", "Bandit", 1); task.wait(2) end end) end
 end)
-baseBtn(qp, "Entregar quest", function() pcall(function() RS.Remotes.CommF_:InvokeServer("CompleteQuest") end) end)
-baseBtn(qp, "Reroll", function() pcall(function() RS.Remotes.CommF_:InvokeServer("BlackbeardReward", "Reroll", "1") end) end)
+baseBtn(qp, "Entregar quest", function() invoke("CompleteQuest") end)
+baseBtn(qp, "Reroll quest", function() invoke("BlackbeardReward", "Reroll", "1") end)
+section(qp, "raid")
+baseBtn(qp, "Iniciar raid", function() invoke("Raids", "1") end)
+toggle(qp, "Auto Raid", function() return C.autorad end, function(v)
+  C.autorad = v
+  if v then task.spawn(function() while C.autorad do invoke("Raids", "1"); task.wait(5) end end) end
+end)
 
---==== TELEPORT ====
+--==== TELEPORT (seas) ====
 local tpp = page("Teleport")
-section(tpp, "ilhas")
-local isl = {
-  {"Bandits", Vector3.new(-1300,12,4600)},{"Marines", Vector3.new(0,30,1000)},
-  {"Snow", Vector3.new(1200,50,-1300)},{"Desert", Vector3.new(1000,20,2000)},
-  {"Jungle", Vector3.new(-1200,20,-300)},{"Sky", Vector3.new(-4700,600,-1300)},
-  {"Underwater", Vector3.new(-4700,500,2000)},{"Second Sea", Vector3.new(1500,50,1000)},
-  {"Cursed Ship", Vector3.new(900,20,-4000)},{"Ice Castle", Vector3.new(-5200,700,-3200)},
+tpp.CanvasSize = UDim2.new(0, 0, 0, 0)
+local subBar = Instance.new("Frame")
+subBar.Size = UDim2.new(1, 0, 0, 26); subBar.BackgroundTransparency = 1; subBar.Parent = tpp
+local subHolder = Instance.new("Frame")
+subHolder.Size = UDim2.new(1, 0, 0, 0); subHolder.Position = UDim2.new(0, 0, 0, 0)
+subHolder.BackgroundTransparency = 1; subHolder.Parent = tpp
+
+local seaData = {
+  ["Sea 1"] = {
+    {"Bandits", Vector3.new(-1300,12,4600)}, {"Marines", Vector3.new(0,30,1000)},
+    {"Jungle", Vector3.new(-1200,20,-300)}, {"Desert", Vector3.new(1000,20,2000)},
+    {"Snow", Vector3.new(1200,50,-1300)}, {"Sky", Vector3.new(-4700,600,-1300)},
+    {"Underwater", Vector3.new(-4700,500,2000)}, {"Fountain City", Vector3.new(500,50,-3500)},
+    {"Pirate Village", Vector3.new(900,50,-1500)}, {"Marine Fortress", Vector3.new(-3000,20,2500)},
+    {"Prison", Vector3.new(-2000,20,1000)}, {"Magma Village", Vector3.new(-4700,30,3000)},
+    {"Colosseum", Vector3.new(-1500,30,-3000)}, {"Frozen Village", Vector3.new(-4700,700,-3200)},
+  },
+  ["Sea 2"] = {
+    {"Kingdom of Rose", Vector3.new(1000,50,1000)}, {"Green Zone", Vector3.new(1500,50,-1000)},
+    {"Graveyard", Vector3.new(2000,50,500)}, {"Dark Arena", Vector3.new(2500,50,0)},
+    {"Snow Mountain", Vector3.new(1500,50,-2000)}, {"Ice Castle", Vector3.new(2000,100,-3000)},
+    {"Cursed Ship", Vector3.new(900,20,-4000)}, {"Haunted Castle", Vector3.new(1200,50,-3000)},
+    {"Barren Island", Vector3.new(2500,50,-1000)}, {"Middle Town", Vector3.new(1000,50,500)},
+    {"Mansion", Vector3.new(2000,50,-2000)}, {"Upper Sky", Vector3.new(1500,600,1000)},
+    {"Forgotten Island", Vector3.new(3000,50,2000)}, {"Musketeer Island", Vector3.new(3500,50,3000)},
+    {"Bounty Island", Vector3.new(2500,50,3000)},
+  },
+  ["Sea 3"] = {
+    {"Port Town", Vector3.new(-500,20,5000)}, {"Hydra Island", Vector3.new(1000,30,6000)},
+    {"Great Tree", Vector3.new(2500,50,5000)}, {"Castle on the Sea", Vector3.new(3000,50,3000)},
+    {"Haunted Castle", Vector3.new(2000,50,4000)}, {"Sea of Treats", Vector3.new(3500,30,2000)},
+    {"Tiki Outpost", Vector3.new(-1000,20,7000)}, {"Kitsune Island", Vector3.new(-2000,30,9000)},
+    {"Floating Turtle", Vector3.new(4000,100,4000)}, {"Sunken City", Vector3.new(4500,-100,3000)},
+    {"Temple of Time", Vector3.new(5000,50,2000)},
+  },
 }
-for _, i in ipairs(isl) do baseBtn(tpp, i[1], function() tp(i[2]) end) end
+local seaFrames, seaBtns = {}, {}
+local curSea
+local function showSea(n)
+  curSea = n
+  for k, f in pairs(seaFrames) do f.Visible = (k == n) end
+  for k, b in pairs(seaBtns) do
+    b.BackgroundColor3 = (k == n) and Color3.fromRGB(34, 211, 238) or Color3.fromRGB(20, 30, 40)
+    b.TextColor3 = (k == n) and Color3.fromRGB(8, 12, 16) or Color3.fromRGB(190, 210, 225)
+  end
+end
+local seaNames = { "Sea 1", "Sea 2", "Sea 3" }
+for i, n in ipairs(seaNames) do
+  local sb = Instance.new("TextButton")
+  sb.Size = UDim2.new(0, 100, 0, 24); sb.Position = UDim2.new(0, (i-1)*104, 0, 0)
+  sb.BackgroundColor3 = Color3.fromRGB(20, 30, 40); sb.Text = n; sb.TextColor3 = Color3.fromRGB(190, 210, 225)
+  sb.Font = Enum.Font.GothamBold; sb.TextSize = 11; sb.Parent = subBar
+  Instance.new("UICorner", sb).CornerRadius = UDim.new(0, 6)
+  sb.MouseButton1Click:Connect(function() showSea(n) end)
+  seaBtns[n] = sb
+  local f = Instance.new("ScrollingFrame")
+  f.Size = UDim2.new(1, 0, 0, 250); f.Position = UDim2.new(0, 0, 0, 30)
+  f.BackgroundTransparency = 1; f.BorderSizePixel = 0; f.ScrollBarThickness = 3
+  f.CanvasSize = UDim2.new(0, 0, 0, (#seaData[n]) * 34 + 10)
+  f.Visible = false; f.Parent = tpp; seaFrames[n] = f
+  for j, isl in ipairs(seaData[n]) do
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, -8, 0, 28); b.Position = UDim2.new(0, 0, 0, (j-1)*34)
+    b.BackgroundColor3 = Color3.fromRGB(16, 24, 32); b.Text = isl[1]; b.TextColor3 = Color3.fromRGB(215, 230, 240)
+    b.Font = Enum.Font.Gotham; b.TextSize = 12; b.Parent = f
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+    b.MouseButton1Click:Connect(function() tp(isl[2]) end)
+  end
+end
+showSea("Sea 1")
 
 --==== PLAYER ====
 local pp = page("Player")
@@ -310,7 +384,6 @@ end)
 slider(pp, "Jump", 50, 300, function() return C.jump end, function(v)
   C.jump = v; if alive() then plr.Character:FindFirstChildOfClass("Humanoid").JumpPower = v end; saveCfg()
 end)
-
 local flyDir = {f=false,b=false,u=false,d=false,l=false,r=false}
 local bv, bg, flyPad
 toggle(pp, "Fly", function() return _G.kfly or false end, function(v)
@@ -342,12 +415,9 @@ toggle(pp, "Fly", function() return _G.kfly or false end, function(v)
         local cam = workspace.CurrentCamera.CFrame
         local dir = Vector3.new()
         if mobile then
-          if flyDir.f then dir += cam.LookVector end
-          if flyDir.b then dir -= cam.LookVector end
-          if flyDir.u then dir += Vector3.new(0,1,0) end
-          if flyDir.d then dir -= Vector3.new(0,1,0) end
-          if flyDir.l then dir -= cam.RightVector end
-          if flyDir.r then dir += cam.RightVector end
+          if flyDir.f then dir += cam.LookVector end; if flyDir.b then dir -= cam.LookVector end
+          if flyDir.u then dir += Vector3.new(0,1,0) end; if flyDir.d then dir -= Vector3.new(0,1,0) end
+          if flyDir.l then dir -= cam.RightVector end; if flyDir.r then dir += cam.RightVector end
         else
           if UIS:IsKeyDown(Enum.KeyCode.W) then dir += cam.LookVector end
           if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= cam.LookVector end
@@ -356,8 +426,7 @@ toggle(pp, "Fly", function() return _G.kfly or false end, function(v)
           if UIS:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0,1,0) end
           if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir -= Vector3.new(0,1,0) end
         end
-        bv.Velocity = dir * 90
-        bg.CFrame = cam
+        bv.Velocity = dir * 90; bg.CFrame = cam
       end
     end end)
   else
@@ -367,7 +436,8 @@ toggle(pp, "Fly", function() return _G.kfly or false end, function(v)
   end
 end)
 toggle(pp, "Noclip", function() return _G.knoclip or false end, function(v)
-  _G.knoclip = v; if v then task.spawn(function() while _G.knoclip do
+  _G.knoclip = v
+  if v then task.spawn(function() while _G.knoclip do
     RunService.Stepped:Wait()
     if plr.Character then for _, p in pairs(plr.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end
   end end) end
@@ -407,9 +477,63 @@ toggle(vp, "ESP Fruits", function() return C.espFruits end, function(v)
   C.espFruits = v
   if v then loopEsp(function() return C.espFruits end, function() local t={}; for _,c in pairs(workspace:GetDescendants()) do if c:IsA("Tool") and c:FindFirstChild("Handle") then table.insert(t,c) end end; return t end, "f", Color3.fromRGB(239,68,68)) else clearEsp("f") end
 end)
+toggle(vp, "ESP Bosses", function() return C.espBosses end, function(v)
+  C.espBosses = v
+  if v then loopEsp(function() return C.espBosses end, function()
+    local t = {}; local e = workspace:FindFirstChild("Enemies")
+    if e then for _, m in pairs(e:GetChildren()) do local h = m:FindFirstChild("Humanoid"); if h and h.MaxHealth >= 1000 then table.insert(t, m) end end end; return t
+  end, "b", Color3.fromRGB(255,80,80)) else clearEsp("b") end
+end)
+section(vp, "ambiente")
+local orig = { b = Lighting.Brightness, a = Lighting.Ambient, o = Lighting.OutdoorAmbient, f = Lighting.FogEnd }
+toggle(vp, "Fullbright", function() return C.fullbright end, function(v)
+  C.fullbright = v
+  if v then Lighting.Brightness = 3; Lighting.Ambient = Color3.fromRGB(200,200,200); Lighting.OutdoorAmbient = Color3.fromRGB(200,200,200); Lighting.FogEnd = 1e5
+  else Lighting.Brightness = orig.b; Lighting.Ambient = orig.a; Lighting.OutdoorAmbient = orig.o; Lighting.FogEnd = orig.f end
+end)
+
+--==== STATS ====
+local sp = page("Stats")
+section(sp, "distribuicao")
+dropdown(sp, "Atributo", {"Melee","Defense","Sword","Gun","Blox Fruit"}, function(v) C.statName = v end)
+toggle(sp, "Auto Stats", function() return C.autostats end, function(v)
+  C.autostats = v
+  if v then task.spawn(function() while C.autostats do invoke("AddPoint", C.statName, "1"); task.wait(0.3) end end) end
+end)
+baseBtn(sp, "1 ponto manual", function() invoke("AddPoint", C.statName, "1") end)
+section(sp, "haki")
+toggle(sp, "Auto Buso", function() return C.buso end, function(v)
+  C.buso = v
+  if v then task.spawn(function() while C.buso do invoke("Buso"); task.wait(1) end end) end
+end)
+toggle(sp, "Auto Ken", function() return C.ken end, function(v)
+  C.ken = v
+  if v then task.spawn(function() while C.ken do invoke("Ken"); task.wait(1) end end) end
+end)
 
 --==== MISC ====
 local mp = page("Misc")
+section(mp, "fruta")
+toggle(mp, "Fruit Sniper", function() return C.sniper end, function(v)
+  C.sniper = v
+  if v then task.spawn(function() while C.sniper do
+    local name = C.sniperName
+    if name ~= "" then
+      for _, t in pairs(workspace:GetDescendants()) do
+        if t:IsA("Tool") and t.Name:lower():find(name:lower()) then invoke("PurchaseRawFruit", t.Name); break end
+      end
+    end
+    task.wait(1)
+  end end) end
+end)
+local sniperBox = Instance.new("TextBox")
+sniperBox.Size = UDim2.new(1, -8, 0, 28); sniperBox.Position = UDim2.new(0, 0, 0, nextY(mp))
+sniperBox.BackgroundColor3 = Color3.fromRGB(16, 24, 32); sniperBox.PlaceholderText = "nome da fruta (ex: Dragon)"
+sniperBox.Text = C.sniperName; sniperBox.TextColor3 = Color3.fromRGB(215, 230, 240); sniperBox.PlaceholderColor3 = Color3.fromRGB(80, 96, 110)
+sniperBox.Font = Enum.Font.Gotham; sniperBox.TextSize = 12; sniperBox.Parent = mp
+Instance.new("UICorner", sniperBox).CornerRadius = UDim.new(0, 6)
+sniperBox:GetPropertyChangedSignal("Text"):Connect(function() C.sniperName = sniperBox.Text; saveCfg() end)
+section(mp, "servidor")
 baseBtn(mp, "Rejoin", function() pcall(function() TPS:Teleport(game.PlaceId, plr) end) end)
 baseBtn(mp, "Server Hop", function()
   task.spawn(function()
@@ -418,14 +542,23 @@ baseBtn(mp, "Server Hop", function()
   end)
 end)
 baseBtn(mp, "Reset Character", function() if alive() then plr.Character:BreakJoints() end end)
+toggle(mp, "Anti-AFK", function() return C.antiAfk end, function(v) C.antiAfk = v end)
+plr.Idled:Connect(function()
+  if C.antiAfk then
+    pcall(function() VU:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame); task.wait(1); VU:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame) end)
+  end
+end)
+section(mp, "config")
 baseBtn(mp, "Salvar config", function() saveCfg(); notify("Config salva") end)
-baseBtn(mp, "Resetar config", function() C.speed = 16; C.jump = 50; saveCfg(); notify("Resetada") end)
+baseBtn(mp, "Resetar config", function()
+  C.speed = 16; C.jump = 50; C.npcFilter = ""; saveCfg(); notify("Resetada")
+end)
 
 --==== status + busca ====
 task.spawn(function() while gui.Parent do
   RunService.Heartbeat:Wait()
   local dt = RunService.RenderStepped:Wait()
-  stxt.Text = string.format("fps %d | farm %s | aura %s", math.floor(1/math.max(dt,0.001)), C.farm and "on" or "off", C.aura and "on" or "off")
+  stxt.Text = string.format("fps %d | farm %s | aura %s | buso %s", math.floor(1/math.max(dt,0.001)), C.farm and "on" or "off", C.aura and "on" or "off", C.buso and "on" or "off")
 end end)
 search:GetPropertyChangedSignal("Text"):Connect(function()
   local q = search.Text:lower()
@@ -435,4 +568,4 @@ search:GetPropertyChangedSignal("Text"):Connect(function()
 end)
 
 showTab("Farm")
-notify("Killua Hub v2.1 carregado")
+notify("Killua Hub v3.0 carregado")
