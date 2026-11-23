@@ -1,215 +1,106 @@
--- KILLUA HUB | estilo hub (abas: Farm / Teleport / Player / Misc)
--- Feito pra executor com firetouchinterest + getconnections (Delta, Fluxus, Codex, Hydrogen)
-
+--=====================================================
+--  KILLUA HUB v2.0  |  professional build
+--  executor: firetouchinterest / getconnections / Drawing
+--=====================================================
 if _G.KilluaHub then pcall(function() _G.KilluaHub:Destroy() end) end
 
-local plr = game.Players.LocalPlayer
+local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local TPS = game:GetService("TeleportService")
+local Http = game:GetService("HttpService")
+local plr = Players.LocalPlayer
 
-local S = { farm=false, chest=false, fast=false, autoquest=false, kills=0 }
+--==== config persist ====
+local CFG = "killuahub_config.json"
+local C = {
+  speed = 16, jump = 50,
+  farm = false, aura = false, bring = false, autoquest = false,
+  espPlayers = false, espChests = false, espFruits = false, espBosses = false,
+  npcFilter = "",
+}
+if pcall(function() return readfile end) and isfile(CFG) then
+  pcall(function() local d = Http:JSONDecode(readfile(CFG)); for k, v in pairs(d) do C[k] = v end end)
+end
+local function saveCfg() pcall(function() writefile(CFG, Http:JSONEncode(C)) end) end
 
-local function ok() return plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 end
-local function tp(p) if ok() then plr.Character.HumanoidRootPart.CFrame = CFrame.new(p) end end
+local function alive()
+  local c = plr.Character
+  return c and c:FindFirstChild("HumanoidRootPart") and c:FindFirstChildOfClass("Humanoid") and c:FindFirstChildOfClass("Humanoid").Health > 0
+end
+local function tp(p) if alive() then plr.Character.HumanoidRootPart.CFrame = CFrame.new(p) end end
+local function notify(t) pcall(function() game:GetService("StarterGui"):SetCore("SendNotification", { Title = "Killua Hub", Text = t, Duration = 2 }) end) end
 
--- ===== GUI =====
+--==== GUI ====
 local gui = Instance.new("ScreenGui")
 gui.Name = "KilluaHub"; gui.ResetOnSpawn = false; gui.IgnoreGuiInset = true
-gui.Parent = plr:WaitForChild("PlayerGui")
-_G.KilluaHub = gui
+gui.Parent = plr:WaitForChild("PlayerGui"); _G.KilluaHub = gui
 
-local toggle = Instance.new("TextButton")
-toggle.Size = UDim2.new(0, 50, 0, 50)
-toggle.Position = UDim2.new(0, 18, 0, 140)
-toggle.BackgroundColor3 = Color3.fromRGB(34, 211, 238)
-toggle.Text = "K"; toggle.TextColor3 = Color3.fromRGB(10, 14, 20)
-toggle.Font = Enum.Font.GothamBold; toggle.TextSize = 22
-toggle.Parent = gui
-Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 12)
+local open = Instance.new("TextButton")
+open.Size = UDim2.new(0, 54, 0, 54); open.Position = UDim2.new(0, 16, 0, 140)
+open.BackgroundColor3 = Color3.fromRGB(34, 211, 238); open.Text = "K"
+open.TextColor3 = Color3.fromRGB(8, 12, 16); open.Font = Enum.Font.GothamBlack; open.TextSize = 24
+open.Parent = gui; Instance.new("UICorner", open).CornerRadius = UDim.new(0, 14)
 
-local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 260, 0, 340)
-main.Position = UDim2.new(0, 78, 0, 140)
-main.BackgroundColor3 = Color3.fromRGB(10, 14, 20)
-main.BorderSizePixel = 0; main.Active = true; main.Draggable = true
-main.Visible = false; main.Parent = gui
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
+local win = Instance.new("Frame")
+win.Size = UDim2.new(0, 440, 0, 300); win.Position = UDim2.new(0.5, -220, 0.5, -150)
+win.BackgroundColor3 = Color3.fromRGB(10, 14, 20); win.BorderSizePixel = 0
+win.Active = true; win.Draggable = true; win.Visible = false; win.Parent = gui
+Instance.new("UICorner", win).CornerRadius = UDim.new(0, 14)
+local stroke = Instance.new("UIStroke", win); stroke.Color = Color3.fromRGB(24, 40, 52); stroke.Thickness = 1
 
-toggle.MouseButton1Click:Connect(function() main.Visible = not main.Visible end)
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 44); header.BackgroundColor3 = Color3.fromRGB(12, 18, 26)
+header.BorderSizePixel = 0; header.Parent = win
+Instance.new("UICorner", header).CornerRadius = UDim.new(0, 14)
 
-local head = Instance.new("TextLabel")
-head.Size = UDim2.new(1, 0, 0, 38)
-head.BackgroundColor3 = Color3.fromRGB(34, 211, 238)
-head.Text = "KILLUA HUB"; head.TextColor3 = Color3.fromRGB(10, 14, 20)
-head.Font = Enum.Font.GothamBold; head.TextSize = 15
-head.Parent = main
-Instance.new("UICorner", head).CornerRadius = UDim.new(0, 12)
+local logo = Instance.new("TextLabel")
+logo.Size = UDim2.new(0, 120, 1, 0); logo.Position = UDim2.new(0, 14, 0, 0)
+logo.BackgroundTransparency = 1; logo.Text = "KILLUA HUB"
+logo.TextColor3 = Color3.fromRGB(34, 211, 238); logo.Font = Enum.Font.GothamBlack
+logo.TextSize = 15; logo.TextXAlignment = Enum.TextXAlignment.Left; logo.Parent = header
 
--- abas
-local tabBar = Instance.new("Frame")
-tabBar.Size = UDim2.new(1, -16, 0, 26); tabBar.Position = UDim2.new(0, 8, 0, 44)
-tabBar.BackgroundTransparency = 1; tabBar.Parent = main
+local ver = Instance.new("TextLabel")
+ver.Size = UDim2.new(0, 60, 1, 0); ver.Position = UDim2.new(0, 128, 0, 0)
+ver.BackgroundTransparency = 1; ver.Text = "v2.0"; ver.TextColor3 = Color3.fromRGB(80, 96, 110)
+ver.Font = Enum.Font.Gotham; ver.TextSize = 11; ver.TextXAlignment = Enum.TextXAlignment.Left; ver.Parent = header
 
-local content = Instance.new("Frame")
-content.Size = UDim2.new(1, -16, 1, -86); content.Position = UDim2.new(0, 8, 0, 76)
-content.BackgroundTransparency = 1; content.Parent = main
-
-local pages = {}
-local function makePage(name)
-  local f = Instance.new("ScrollingFrame")
-  f.Size = UDim2.new(1, 0, 1, 0); f.BackgroundTransparency = 1
-  f.BorderSizePixel = 0; f.ScrollBarThickness = 4
-  f.Visible = false; f.Parent = content
-  pages[name] = f
-  return f
-end
-
-local function showTab(name)
-  for n, p in pairs(pages) do p.Visible = (n == name) end
-end
-
-local function tabBtn(name, x)
+local function hdrBtn(txt, x, cb)
   local b = Instance.new("TextButton")
-  b.Size = UDim2.new(0, 58, 1, 0); b.Position = UDim2.new(0, x, 0, 0)
-  b.BackgroundColor3 = Color3.fromRGB(18, 28, 38)
-  b.Text = name; b.TextColor3 = Color3.fromRGB(230, 237, 243)
-  b.Font = Enum.Font.Gotham; b.TextSize = 11; b.Parent = tabBar
-  Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
-  b.MouseButton1Click:Connect(function() showTab(name) end)
-end
-
-tabBtn("Farm", 0); tabBtn("Teleport", 62); tabBtn("Player", 124); tabBtn("Misc", 186)
-
-local function btn(parent, text, y, cb)
-  local b = Instance.new("TextButton")
-  b.Size = UDim2.new(1, 0, 0, 30); b.Position = UDim2.new(0, 0, 0, y)
-  b.BackgroundColor3 = Color3.fromRGB(18, 28, 38)
-  b.Text = text; b.TextColor3 = Color3.fromRGB(230, 237, 243)
-  b.Font = Enum.Font.Gotham; b.TextSize = 12; b.Parent = parent
-  Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+  b.Size = UDim2.new(0, 30, 0, 30); b.Position = UDim2.new(1, x, 0, 7)
+  b.BackgroundColor3 = Color3.fromRGB(20, 30, 40); b.Text = txt
+  b.TextColor3 = Color3.fromRGB(200, 220, 235); b.Font = Enum.Font.GothamBold; b.TextSize = 14
+  b.Parent = header; Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
   b.MouseButton1Click:Connect(function() cb(b) end)
-  return b
 end
+hdrBtn("_", -76, function() win.Visible = false end)
+hdrBtn("X", -40, function() gui:Destroy(); _G.KilluaHub = nil end)
+open.MouseButton1Click:Connect(function() win.Visible = not win.Visible end)
+UIS.InputBegan:Connect(function(k, g) if not g and k.KeyCode == Enum.KeyCode.RightShift then win.Visible = not win.Visible end end)
 
-local function toggleBtn(parent, label, y, get, set)
-  local b = btn(parent, label .. ": OFF", y, function(self)
-    set(not get())
-    local on = get()
-    self.Text = label .. ": " .. (on and "ON" or "OFF")
-    self.BackgroundColor3 = on and Color3.fromRGB(34, 211, 238) or Color3.fromRGB(18, 28, 38)
-    self.TextColor3 = on and Color3.fromRGB(10, 14, 20) or Color3.fromRGB(230, 237, 243)
-  end)
-  return b
-end
+-- busca
+local search = Instance.new("TextBox")
+search.Size = UDim2.new(1, -28, 0, 30); search.Position = UDim2.new(0, 14, 0, 52)
+search.BackgroundColor3 = Color3.fromRGB(16, 24, 32); search.PlaceholderText = "buscar função..."
+search.Text = ""; search.TextColor3 = Color3.fromRGB(220, 235, 245)
+search.PlaceholderColor3 = Color3.fromRGB(80, 96, 110); search.Font = Enum.Font.Gotham; search.TextSize = 12
+search.ClearTextOnFocus = false; search.Parent = win
+Instance.new("UICorner", search).CornerRadius = UDim.new(0, 8)
 
--- ===== Farm =====
-local farmPage = makePage("Farm")
-local function doAttack()
-  if not ok() then return end
-  local tool = plr.Character:FindFirstChildOfClass("Tool")
-  if not tool then
-    for _, t in pairs(plr.Backpack:GetChildren()) do if t:IsA("Tool") then tool = t break end end
-    if tool then tool.Parent = plr.Character end
-  end
-  local en = workspace:FindFirstChild("Enemies")
-  if not en then return end
-  for _, e in pairs(en:GetChildren()) do
-    local hrp, hum = e:FindFirstChild("HumanoidRootPart"), e:FindFirstChild("Humanoid")
-    if hrp and hum and hum.Health > 0 then
-      tp(hrp.Position)
-      if tool and tool:FindFirstChild("Handle") then
-        pcall(function() firetouchinterest(tool.Handle, hrp, 0); task.wait(); firetouchinterest(tool.Handle, hrp, 1) end)
-      end
-      if S.fast then pcall(function() RS.Remotes.CommF_:InvokeServer("attack", e.Name) end) end
-      task.wait(0.12)
-    end
-  end
-end
+-- sidebar
+local side = Instance.new("Frame")
+side.Size = UDim2.new(0, 108, 1, -132); side.Position = UDim2.new(0, 14, 0, 90)
+side.BackgroundTransparency = 1; side.Parent = win
 
-toggleBtn(farmPage, "Auto Farm", 6, function() return S.farm end, function(v)
-  S.farm = v
-  if v then task.spawn(function() while S.farm do doAttack(); task.wait(0.25) end end) end
-end)
+local pagesWrap = Instance.new("Frame")
+pagesWrap.Size = UDim2.new(1, -140, 1, -132); pagesWrap.Position = UDim2.new(0, 126, 0, 90)
+pagesWrap.BackgroundTransparency = 1; pagesWrap.Parent = win
 
-toggleBtn(farmPage, "Chest Farm", 44, function() return S.chest end, function(v)
-  S.chest = v
-  if v then task.spawn(function()
-    while S.chest do
-      for _, c in pairs(workspace:GetDescendants()) do
-        if c:IsA("MeshPart") and string.find(c.Name, "Chest") then tp(c.Position); task.wait(0.35) end
-      end
-      task.wait(0.5)
-    end
-  end) end
-end)
-
-toggleBtn(farmPage, "Fast Attack", 82, function() return S.fast end, function(v) S.fast = v end)
-
-toggleBtn(farmPage, "Auto Quest", 120, function() return S.autoquest end, function(v)
-  S.autoquest = v
-  if v then task.spawn(function()
-    while S.autoquest do
-      pcall(function() RS.Remotes.CommF_:InvokeServer("StartQuest", "Bandit", 1) end)
-      task.wait(1)
-    end
-  end) end
-end)
-
-local killLbl = Instance.new("TextLabel")
-killLbl.Size = UDim2.new(1, 0, 0, 20); killLbl.Position = UDim2.new(0, 0, 0, 160)
-killLbl.BackgroundTransparency = 1; killLbl.TextColor3 = Color3.fromRGB(140, 160, 175)
-killLbl.Font = Enum.Font.Gotham; killLbl.TextSize = 11; killLbl.Text = "kills: 0"; killLbl.Parent = farmPage
-
--- ===== Teleport =====
-local tpPage = makePage("Teleport")
-local islands = {
-  {"Bandits", Vector3.new(-1300, 12, 4600)},
-  {"Marines", Vector3.new(0, 30, 1000)},
-  {"Snow", Vector3.new(1200, 50, -1300)},
-  {"Desert", Vector3.new(1000, 20, 2000)},
-  {"Jungle", Vector3.new(-1200, 20, -300)},
-  {"Sky", Vector3.new(-4700, 600, -1300)},
-  {"Underwater", Vector3.new(-4700, 500, 2000)},
-  {"Second Sea", Vector3.new(1500, 50, 1000)},
-}
-for i, isl in ipairs(islands) do
-  btn(tpPage, isl[1], (i - 1) * 34, function() tp(isl[2]) end)
-end
-
--- ===== Player =====
-local plrPage = makePage("Player")
-btn(plrPage, "Speed 200", 6, function()
-  if ok() then plr.Character.Humanoid.WalkSpeed = 200 end
-end)
-btn(plrPage, "Jump 150", 40, function()
-  if ok() then plr.Character.Humanoid.JumpPower = 150 end
-end)
-btn(plrPage, "Reset Speed/Jump", 74, function()
-  if ok() then plr.Character.Humanoid.WalkSpeed = 16; plr.Character.Humanoid.JumpPower = 50 end
-end)
-btn(plrPage, "Heal (restaurar)", 108, function()
-  pcall(function() plr.Character.Humanoid.Health = plr.Character.Humanoid.MaxHealth end)
-end)
-
--- ===== Misc =====
-local miscPage = makePage("Misc")
-btn(miscPage, "Rejoin", 6, function() pcall(function() game:GetService("TeleportService"):Teleport(game.PlaceId, plr) end) end)
-btn(miscPage, "Server Hop", 40, function()
-  task.spawn(function()
-    local ok2, list = pcall(function()
-      return game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?limit=50")
-    end)
-    if ok2 then
-      local data = game:GetService("HttpService"):JSONDecode(list)
-      for _, s in pairs(data.data) do
-        if s.playing < s.maxPlayers and s.id ~= game.JobId then
-          pcall(function() game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, s.id, plr) end)
-          break
-        end
-      end
-    end
-  end)
-end)
-btn(miscPage, "Fechar Hub", 74, function() gui:Destroy(); _G.KilluaHub = nil end)
-
-showTab("Farm")
-print("Killua Hub carregado")
+local status = Instance.new("Frame")
+status.Size = UDim2.new(1, 0, 0, 26); status.Position = UDim2.new(0, 0, 1, -26)
+status.BackgroundColor3 = Color3.fromRGB(12, 18, 26); status.BorderSizePixel = 0; status.Parent = win
+local stxt = Instance.new("TextLabel")
+stxt.Size = UDim2.new(1, -20, 1, 0); stxt.Position = UDim2.new(0, 14, 0, 0)
+stxt.BackgroundTransparency = 1; stxt.TextColor3 = Color3.fromRGB(90, 108, 124)
+stxt.Font = Enum.Font.Gotham; stxt.TextSize = 10; stxt.TextXAlignment = Enum.TextXAlignment.
